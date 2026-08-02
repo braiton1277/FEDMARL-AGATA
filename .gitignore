@@ -1,0 +1,19 @@
+
+# Dados e arquivos gerados
+data/
+model/
+results/
+runtime/
+
+# Checkpoints
+*.pickle
+*.pt
+*.pth
+*.ckpt
+
+# Python
+__pycache__/
+*.pyc
+
+# Configurações locais
+.env

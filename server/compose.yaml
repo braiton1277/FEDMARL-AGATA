@@ -1,0 +1,59 @@
+name: task_fedmarl
+
+services:
+  task_cebd_server:
+    build:
+      context: .
+    image: task_cebd_server_image
+
+    environment:
+      SERVER_BROKER_HOST: "${CLOUD_HOST}"
+      SERVER_BROKER_PORT: "5673"
+      TASK_ID: "cebd"
+
+      NUM_CLIENTS: "${NUM_CLIENTS:-50}"
+      NUM_ROUNDS: "${NUM_ROUNDS:-500}"
+      SELECT_CLIENTS: "${SELECT_CLIENTS:-15}"
+      SELECTION_SEED: "${SELECTION_SEED:-2048}"
+
+      # Parâmetros originais do VDN/FEDMARL.
+      VDN_HIDDEN: "${VDN_HIDDEN:-128}"
+      VDN_LR: "${VDN_LR:-0.001}"
+      VDN_WEIGHT_DECAY: "${VDN_WEIGHT_DECAY:-0.0001}"
+      VDN_GAMMA: "${VDN_GAMMA:-0.9}"
+      VDN_GRAD_CLIP: "${VDN_GRAD_CLIP:-1.0}"
+      VDN_TARGET_SYNC_EVERY: "${VDN_TARGET_SYNC_EVERY:-20}"
+      VDN_BUFFER_SIZE: "${VDN_BUFFER_SIZE:-20000}"
+
+      VDN_WARMUP_TRANSITIONS: "${VDN_WARMUP_TRANSITIONS:-50}"
+      VDN_START_TRAIN_ROUND: "${VDN_START_TRAIN_ROUND:-50}"
+      VDN_UPDATES_PER_ROUND: "${VDN_UPDATES_PER_ROUND:-50}"
+      VDN_TRAIN_EVERY: "${VDN_TRAIN_EVERY:-1}"
+
+      VDN_BATCH_BASE: "${VDN_BATCH_BASE:-32}"
+      VDN_BATCH_MAX: "${VDN_BATCH_MAX:-256}"
+      VDN_BATCH_BUFFER_RATIO: "${VDN_BATCH_BUFFER_RATIO:-4}"
+
+      VDN_EPSILON: "${VDN_EPSILON:-0.15}"
+      VDN_SWAP_M: "${VDN_SWAP_M:-2}"
+      REWARD_WINDOW: "${REWARD_WINDOW:-5}"
+
+      PER_ALPHA: "${PER_ALPHA:-0.6}"
+      PER_BETA_START: "${PER_BETA_START:-0.4}"
+      PER_BETA_END: "${PER_BETA_END:-1.0}"
+      PER_BETA_STEPS: "${PER_BETA_STEPS:-4000}"
+      PER_EPS: "${PER_EPS:-0.001}"
+
+      CLIENT_WAIT_TIMEOUT: "${CLIENT_WAIT_TIMEOUT:-1800}"
+      GET_PROPERTIES_TIMEOUT: "${GET_PROPERTIES_TIMEOUT:-120}"
+
+      RUN_ID: "${RUN_ID:-fedmarl_final}"
+      RESULTS_DIR: "/results"
+
+    ports:
+      - "6955:8080"
+
+    volumes:
+      - "${MODEL_BACKUP_DIR}:/model"
+      - "${DATA_PATH}:/data"
+      - "${RESULTS_PATH:-../results}:/results"

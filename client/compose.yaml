@@ -1,0 +1,35 @@
+name: task_fedmarl
+
+services:
+  task_cebd_client:
+    build:
+      context: .
+    image: task_cebd_client_image
+
+    # Disponibiliza a GPU NVIDIA dentro do contêiner.
+    gpus: all
+
+    environment:
+      CLIENT_BROKER_HOST: "${CLIENT_HOST}"
+      CLIENT_BROKER_PORT: "5674"
+      SERVER_HOST: "task_cebd_server"
+      SERVER_PORT: "8080"
+      TASK_ID: "cebd"
+
+      CLIENT_ID: "${CLIENT_ID:-0}"
+      POOL_SIZE: "${POOL_SIZE:-50}"
+      DIRICHLET_ALPHA: "${DIRICHLET_ALPHA:-0.3}"
+      PARTITION_SEED: "${PARTITION_SEED:-2048}"
+
+      ATTACK_FRACTION: "${ATTACK_FRACTION:-0.2}"
+      ATTACK_START_ROUND: "${ATTACK_START_ROUND:-1}"
+      FLIP_RATE: "${FLIP_RATE:-1.0}"
+
+      MAX_CONCURRENT_GPU_CLIENTS: "${MAX_CONCURRENT_GPU_CLIENTS:-2}"
+      GPU_LOCK_DIR: "/gpu_slots"
+
+    volumes:
+      - "${DATA_PATH}:/data"
+
+      # Todos os clientes devem montar a mesma pasta do host.
+      - "${GPU_LOCK_PATH:-./runtime/gpu_slots}:/gpu_slots"

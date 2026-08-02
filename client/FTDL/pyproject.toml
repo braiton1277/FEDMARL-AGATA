@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ftdl*"]
+exclude = [".venv*","__pycache__*","tasks"]
+
+[project]
+name = "ftdl"
+version = "0.1.0"
+description = "Flower Tasks Daemon Library"
+authors = [
+    {name = "Guilherme Araujo Thomaz", email = "guiaraujo@gta.ufrj.br"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.6"
+dependencies = ["python-on-whales"]
+
+[project.urls]
+"Homepage" = "https://github.com/Avadip-ROTA/FTDL"
