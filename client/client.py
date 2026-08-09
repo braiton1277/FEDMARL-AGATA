@@ -7,6 +7,12 @@ try:
 
     import numpy as np
     import torch
+
+    
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+
+
     from flwr.client import NumPyClient, start_client
     from ftdl.ftdl import FTDL
     from grpc import _channel as ch
@@ -548,4 +554,4 @@ if __name__ == "__main__":
     print("Waiting for termination...")
 
     while True:
-        pass
+        time.sleep(60)

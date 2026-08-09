@@ -1,6 +1,8 @@
 from collections import OrderedDict
 from typing import Dict, List
 
+
+import gc
 import numpy as np
 import torch
 import torch.nn as nn
@@ -332,7 +334,7 @@ def load_data(
             f"O valor deve estar entre 0 e {n_clients - 1}."
         )
 
-    # Mesma normalização utilizada pelo servidor e pelo FEDMARL original.
+    
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
@@ -373,7 +375,7 @@ def load_data(
         idx
         for idx in range(len(full_train))
         if idx not in server_val_set
-    ]
+            ]
 
     all_client_indices = make_clients_dirichlet_indices(
         targets=targets,
@@ -391,9 +393,27 @@ def load_data(
             f"O cliente {client_id} recebeu uma partição vazia."
         )
 
+
+    client_indices = np.asarray(
+        client_indices,
+        dtype=np.int64,
+    )
+
+    client_targets = targets[client_indices].copy()
+
+    full_train.data = full_train.data[
+        client_indices
+        ].copy()
+
+
+    full_train.targets = client_targets.tolist()
+
+
+    local_indices = list(range(len(client_targets)))
+
     client_dataset = SwitchableTargetedLabelFlipSubset(
         base_dataset=full_train,
-        indices=client_indices,
+        indices=local_indices,
         seed=seed + 1000 + client_id,
         enabled=False,
         attack_rate=0.0,
@@ -412,8 +432,6 @@ def load_data(
         num_workers=num_workers,
     )
 
-    # O probe compartilha o mesmo dataset com o treino.
-    # Assim, quando o ataque é ativado, ambos veem os rótulos invertidos.
     probe_loader = DataLoader(
         client_dataset,
         batch_size=batch_size,
@@ -429,9 +447,17 @@ def load_data(
     )
 
     class_counts = np.bincount(
-        targets[client_indices],
+        client_targets,
         minlength=10,
     )
+
+    del targets
+    del all_client_indices
+    del train_pool_indices
+    del server_val_set
+    del server_val_indices
+
+    gc.collect()
 
     print(
         f"[Cliente {client_id}] "

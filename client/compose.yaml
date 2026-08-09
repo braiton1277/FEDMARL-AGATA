@@ -6,8 +6,10 @@ services:
       context: .
     image: task_cebd_client_image
 
-    # Disponibiliza a GPU NVIDIA dentro do contêiner.
+    
     gpus: all
+
+
 
     environment:
       CLIENT_BROKER_HOST: "${CLIENT_HOST}"
@@ -27,6 +29,11 @@ services:
 
       MAX_CONCURRENT_GPU_CLIENTS: "${MAX_CONCURRENT_GPU_CLIENTS:-2}"
       GPU_LOCK_DIR: "/gpu_slots"
+      
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
 
     volumes:
       - "${DATA_PATH}:/data"

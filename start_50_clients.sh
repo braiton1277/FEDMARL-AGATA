@@ -30,7 +30,7 @@ if [[ -z "${ATTACK_FRACTION:-}" ]]; then
     exit 1
 fi
 
-python - "${ATTACK_FRACTION}" <<'PY'
+docker exec -i task_fedmarl-task_cebd_server-1 python - "${ATTACK_FRACTION}" <<'PY'
 import sys
 
 value = float(sys.argv[1])
@@ -42,7 +42,7 @@ if not 0.0 <= value <= 1.0:
 PY
 
 ATTACKER_IDS_PREVIEW="$(
-python - "${NUM_CLIENTS}" "${ATTACK_FRACTION}" "${PARTITION_SEED}" <<'PY'
+docker exec -i task_fedmarl-task_cebd_server-1 python - "${NUM_CLIENTS}" "${ATTACK_FRACTION}" "${PARTITION_SEED}" <<'PY'
 import sys
 import numpy as np
 

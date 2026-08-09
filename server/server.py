@@ -88,11 +88,11 @@ def weighted_average(
 
 
 @torch.no_grad()
-def evaluate_server_loss(
+def evaluate_server_metrics(
     model,
     validation_loader,
     max_batches: int = 20,
-) -> float:
+) -> tuple[float, float]:
     if max_batches <= 0:
         raise ValueError(
             "max_batches deve ser maior que zero."
@@ -106,6 +106,8 @@ def evaluate_server_loss(
     ).device
 
     total_loss = 0.0
+    total_correct = 0
+    total_samples = 0
     batches_used = 0
 
     for batch_index, (
@@ -130,12 +132,26 @@ def evaluate_server_loss(
             loss.item()
         )
 
+        predicted_classes = predictions.argmax(
+            dim=1
+        )
+
+        total_correct += int(
+            (
+                predicted_classes == targets
+            ).sum().item()
+        )
+
+        total_samples += int(
+            targets.size(0)
+        )
+
         batches_used += 1
 
     if was_training:
         model.train()
 
-    if batches_used == 0:
+    if batches_used == 0 or total_samples == 0:
         raise RuntimeError(
             "Nenhum lote foi usado na avaliação."
         )
@@ -144,12 +160,24 @@ def evaluate_server_loss(
         total_loss / batches_used
     )
 
+    accuracy = (
+        total_correct / total_samples
+    )
+
     if not np.isfinite(average_loss):
         raise RuntimeError(
             "A perda de validação não é finita."
         )
 
-    return float(average_loss)
+    if not np.isfinite(accuracy):
+        raise RuntimeError(
+            "A acurácia de validação não é finita."
+        )
+
+    return (
+        float(average_loss),
+        float(accuracy),
+    )
 
 
 def windowed_reward(
@@ -2018,52 +2046,136 @@ class ModFedAvg(FedAvg):
             < self.warmup_transitions
         )
 
-        print(
-            f"[VDN política] "
-            f"modo={'warmup-aleatório' if force_random else 'Top-K'}, "
-            f"buffer_n={self.vdn_selector.buf.n}, "
-            f"warmup={self.warmup_transitions}, "
-            f"epsilon={self.vdn_epsilon:.3f}, "
-            f"swap_m={self.vdn_swap_m}",
-            flush=True,
+        selection_mode = os.environ.get(
+            "SELECTION_MODE",
+            "vdn",
+        ).strip().lower()
+
+        selection_seed = int(
+            os.environ.get(
+                "RANDOM_SELECTION_SEED", 
+                "4096",
+            )
         )
 
-        (
-            actions,
-            selected_ranked_ids,
-            q_values,
-            advantages,
-        ) = self.vdn_selector.select_topk_actions(
-            obs=state_matrix,
-            eps=self.vdn_epsilon,
-            swap_m=self.vdn_swap_m,
-            force_random=force_random,
-        )
-
-        if int(actions.sum()) != self.k_select:
-            raise RuntimeError(
-                f"O VDN selecionou {int(actions.sum())} "
-                f"clientes, mas deveria selecionar "
-                f"{self.k_select}."
+        if selection_mode not in {"vdn", "random"}:
+            raise ValueError(
+                f"SELECTION_MODE inválido: "
+                f"{selection_mode}"
             )
 
-        for client_id in range(self.n_clients):
+        if selection_mode == "random":
+
+            candidate_ids = sorted(
+                int(candidate[0])
+                for candidate in candidate_results
+            )
+
+            if len(candidate_ids) < self.k_select:
+                raise RuntimeError(
+                    f"Há somente {len(candidate_ids)} "
+                    f"atualizações válidas, mas "
+                    f"{self.k_select} clientes devem "
+                    f"ser selecionados."
+                )
+
+            rng = np.random.default_rng(
+                selection_seed + server_round
+            )
+
+            selected_ranked_ids = [
+                int(client_id)
+                for client_id in rng.choice(
+                    candidate_ids,
+                    size=self.k_select,
+                    replace=False,
+                )
+            ]
+
+            actions = np.zeros(
+                self.n_clients,
+                dtype=np.int64,
+            )
+
+            actions[selected_ranked_ids] = 1
+
+            # Mantém as variáveis esperadas pelo restante
+            # do código, mas elas não participam da seleção.
+            q_values = np.zeros(
+                (self.n_clients, 2),
+                dtype=np.float32,
+            )
+
+            advantages = np.zeros(
+                self.n_clients,
+                dtype=np.float32,
+            )
+
             print(
-                f"[VDN] CLIENT_ID={client_id}, "
-                f"Q0={q_values[client_id, 0]:+.6f}, "
-                f"Q1={q_values[client_id, 1]:+.6f}, "
-                f"advantage={advantages[client_id]:+.6f}, "
-                f"action={int(actions[client_id])}",
+                f"[RANDOM política] "
+                f"seed={selection_seed}, "
+                f"K={self.k_select}",
                 flush=True,
             )
 
-        print(
-            f"[Rodada {server_round}] "
-            f"ranking Top-K do VDN="
-            f"{selected_ranked_ids}",
-            flush=True,
-        )
+            print(
+                f"[Rodada {server_round}] "
+                f"seleção RANDOM="
+                f"{selected_ranked_ids}",
+                flush=True,
+            )
 
+        else:
+
+            print(
+                f"[VDN política] "
+                f"modo="
+                f"{'warmup-aleatório' if force_random else 'Top-K'}, "
+                f"buffer_n={self.vdn_selector.buf.n}, "
+                f"warmup={self.warmup_transitions}, "
+                f"epsilon={self.vdn_epsilon:.3f}, "
+                f"swap_m={self.vdn_swap_m}",
+                flush=True,
+            )
+
+            (
+                actions,
+                selected_ranked_ids,
+                q_values,
+                advantages,
+            ) = self.vdn_selector.select_topk_actions(
+                obs=state_matrix,
+                eps=self.vdn_epsilon,
+                swap_m=self.vdn_swap_m,
+                force_random=force_random,
+            )
+
+            for client_id in range(self.n_clients):
+                print(
+                    f"[VDN] CLIENT_ID={client_id}, "
+                    f"Q0={q_values[client_id, 0]:+.6f}, "
+                    f"Q1={q_values[client_id, 1]:+.6f}, "
+                    f"advantage="
+                    f"{advantages[client_id]:+.6f}, "
+                    f"action="
+                    f"{int(actions[client_id])}",
+                    flush=True,
+                )
+
+            print(
+                f"[Rodada {server_round}] "
+                f"ranking Top-K do VDN="
+                f"{selected_ranked_ids}",
+                flush=True,
+            )
+
+        if int(actions.sum()) != self.k_select:
+            raise RuntimeError(
+                f"A política {selection_mode} selecionou "
+                f"{int(actions.sum())} clientes, "
+                f"mas deveria selecionar "
+                f"{self.k_select}."
+            )
         
         selected_ids = sorted(
             selected_ranked_ids
@@ -2302,12 +2414,19 @@ class ModFedAvg(FedAvg):
                 net,
                 ndarrays,
             )
+            
 
-            validation_loss = evaluate_server_loss(
+            (
+                 validation_loss,
+                validation_accuracy,
+            ) = evaluate_server_metrics(
                 model=net,
                 validation_loader=server_val_loader,
-                max_batches=20,
+                 max_batches=20,
             )
+
+
+
 
             reward = windowed_reward(
                 loss_history=self.validation_loss_history,
@@ -2322,6 +2441,8 @@ class ModFedAvg(FedAvg):
             print(
                 f"[Recompensa] "
                 f"val_loss={validation_loss:.6f}, "
+                f"val_accuracy="
+                f"{100.0 * validation_accuracy:.2f}%, "               
                 f"reward={reward:+.6f}, "
                 f"historico="
                 f"{len(self.validation_loss_history)}",

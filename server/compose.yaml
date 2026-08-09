@@ -7,6 +7,8 @@ services:
     image: task_cebd_server_image
 
     environment:
+      SELECTION_MODE: "${SELECTION_MODE:-vdn}"
+      RANDOM_SELECTION_SEED: "${RANDOM_SELECTION_SEED:-4096}"     
       SERVER_BROKER_HOST: "${CLOUD_HOST}"
       SERVER_BROKER_PORT: "5673"
       TASK_ID: "cebd"
