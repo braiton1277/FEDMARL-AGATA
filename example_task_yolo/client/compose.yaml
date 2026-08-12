@@ -1,0 +1,21 @@
+name: task_afed
+services:
+  task_afed_client:
+    build:
+      context: .
+    image: task_afed_client_image
+    environment:
+      CLIENT_BROKER_HOST: ${CLIENT_HOST}
+      CLIENT_BROKER_PORT: "5674"
+      SERVER_HOST: "task_afed_server"
+      SERVER_PORT: "8080"
+      TASK_ID: "afed"
+      LOCAL_TEST: "1"
+      BASE_WEIGHTS_PATH: "/data/cityscapes/yolo11n.pt"
+      DATA_YAML_PATH: "/data/cityscapes/data.yaml"
+      LOCAL_CKPT_PATH: "/tmp/yolo_local_client.pt"
+      BATCH_SIZE: "8"
+      CUDA_VISIBLE_DEVICES: ""
+      NUM_CLASSES: "1"
+    volumes:
+      - ${DATA_PATH}:/data

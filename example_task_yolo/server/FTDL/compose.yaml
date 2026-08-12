@@ -1,0 +1,21 @@
+services:
+  rabbitmq_test:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq_test_container
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+  
+  test_ftdl:
+    build:
+      context: ./
+    container_name: ftdl_test
+    environment:
+      CLOUD_BROKER_HOST: "146.164.69.148"
+      CLOUD_BROKER_PORT: "5672"
+      CLIENT_BROKER_HOST: "146.164.69.148"
+      CLIENT_BROKER_PORT: "5672"
+      DATA_PATH: ${DATA_PATH} 
+      FTDL_PATH: "/usr/local/FTDL"
+      SIDE: ${SIDE}

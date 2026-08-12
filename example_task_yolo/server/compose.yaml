@@ -1,0 +1,18 @@
+name: task_afed
+services:
+  task_afed_server:
+    build:
+      context: .
+    image: task_afed_server_image
+    environment:
+      SERVER_BROKER_HOST: "146.164.69.148"
+      SERVER_BROKER_PORT: "5673"
+      TASK_ID: "afed"
+      LOCAL_TEST: "1"
+      NUM_CLIENTS: "2"
+      NUM_ROUNDS: "1"
+      NUM_CLASSES: "1"
+    ports:
+      - "8089:8080"   
+    volumes:
+      - ${MODEL_BACKUP_DIR}:/model

@@ -1,0 +1,3 @@
+[submodule "microservice_interconnect"]
+	path = microservice_interconnect
+	url = git@github.com:Avadip-ROTA/microservice_interconnect.git

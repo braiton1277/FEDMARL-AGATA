@@ -17,3 +17,11 @@ __pycache__/
 
 # Configurações locais
 .env
+
+# YOLO local test artifacts
+example_task_yolo/model/*
+!example_task_yolo/model/.gitkeep
+example_task_yolo/**/__pycache__/
+example_task_yolo/**/*.cache
+example_task_yolo/**/yolo_local_client.pt
+example_task_yolo/**/runs/
