@@ -9,10 +9,14 @@ services:
       SERVER_BROKER_PORT: "5673"
       TASK_ID: "afed"
       LOCAL_TEST: "1"
-      NUM_CLIENTS: "2"
-      NUM_ROUNDS: "1"
+      NUM_CLIENTS: "5"
+      NUM_ROUNDS: "4"
+      K_SELECTED: "2"
+      SELECTION_MODE: "vdn"
+      RANDOM_SELECTION_SEED: "4096"
       NUM_CLASSES: "1"
     ports:
-      - "8089:8080"   
+      - "8089:8080"
     volumes:
       - ${MODEL_BACKUP_DIR}:/model
+      - ${DATA_PATH}:/data

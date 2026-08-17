@@ -4,6 +4,7 @@ services:
     build:
       context: .
     image: task_afed_client_image
+    gpus: all
     environment:
       CLIENT_BROKER_HOST: ${CLIENT_HOST}
       CLIENT_BROKER_PORT: "5674"
@@ -15,7 +16,6 @@ services:
       DATA_YAML_PATH: "/data/cityscapes/data.yaml"
       LOCAL_CKPT_PATH: "/tmp/yolo_local_client.pt"
       BATCH_SIZE: "8"
-      CUDA_VISIBLE_DEVICES: ""
       NUM_CLASSES: "1"
     volumes:
       - ${DATA_PATH}:/data

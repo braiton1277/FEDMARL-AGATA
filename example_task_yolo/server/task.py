@@ -2,6 +2,12 @@ import os
 import pickle
 from collections import OrderedDict
 
+
+
+from ultralytics.cfg import get_cfg
+from ultralytics.data import build_dataloader, build_yolo_dataset
+from ultralytics.data.utils import check_det_dataset
+
 import numpy as np
 import torch
 from ultralytics import YOLO
@@ -22,6 +28,7 @@ def build_model(base_weights_path):
     )
 
     custom_model.load(model.model)
+    custom_model.args = get_cfg()
     custom_model.names = {i: str(i) for i in range(num_classes)}
 
     model.model = custom_model
@@ -60,7 +67,7 @@ def set_weights(net: Net, parameters: list[np.ndarray]):
     state_dict = OrderedDict(updated_weights)
     net.model.model.load_state_dict(state_dict, strict=False)
     return net
-    
+
 def net_to_bytes(net: Net)->bytes:
     params = get_weights(net) # make sure the model is loaded and weights are on the CPU
     return pickle.dumps(params)
@@ -68,3 +75,212 @@ def net_to_bytes(net: Net)->bytes:
 def bytes_to_net(net: Net, bytes_data: bytes)->Net:
     data_to_put_on_the_net = pickle.loads(bytes_data)
     return set_weights(net, data_to_put_on_the_net)
+
+
+def load_probe_loader(
+    data_yaml="/data/cityscapes/data.yaml",
+    batch_size=2,
+):
+    data = check_det_dataset(
+        data_yaml,
+        autodownload=False,
+    )
+
+    cfg = get_cfg(
+        overrides={
+            "task": "detect",
+            "imgsz": 640,
+            "batch": batch_size,
+            "workers": 0,
+            "rect": True,
+            "cache": False,
+        }
+    )
+
+    dataset = build_yolo_dataset(
+        cfg=cfg,
+        img_path=data["val"],
+        batch=batch_size,
+        data=data,
+        mode="val",
+        rect=True,
+        stride=32,
+    )
+
+    loader = build_dataloader(
+        dataset=dataset,
+        batch=batch_size,
+        workers=0,
+        shuffle=False,
+        rank=-1,
+        device=DEVICE,
+    )
+
+    return loader
+
+
+def evaluate_server_loss(
+    net,
+    validation_loader,
+    max_batches=20,
+):
+    model = net.model.model
+    was_training = model.training
+
+    buffer_backup = {
+        name: buffer.detach().clone()
+        for name, buffer in model.named_buffers()
+    }
+
+    model.train()
+
+    total_loss = 0.0
+    total_examples = 0
+
+    try:
+        with torch.no_grad():
+            for batch_index, batch in enumerate(validation_loader):
+                if batch_index >= max_batches:
+                    break
+
+                batch = {
+                    key: (
+                        value.to(DEVICE, non_blocking=True)
+                        if torch.is_tensor(value)
+                        else value
+                    )
+                    for key, value in batch.items()
+                }
+
+                batch["img"] = batch["img"].float() / 255.0
+
+                loss, _ = model.loss(batch)
+
+                batch_size = int(
+                    batch["img"].shape[0]
+                )
+
+                total_loss += float(
+                    loss.detach().sum().item()
+                )
+
+                total_examples += batch_size
+
+        if total_examples == 0:
+            raise RuntimeError(
+                "Nenhuma imagem usada na validação."
+            )
+
+        validation_loss = (
+            total_loss / float(total_examples)
+        )
+
+        if not np.isfinite(validation_loss):
+            raise RuntimeError(
+                "Loss de validação não é finita."
+            )
+
+        return float(validation_loss)
+
+    finally:
+        with torch.no_grad():
+            current_buffers = dict(model.named_buffers())
+
+            for name, saved_buffer in buffer_backup.items():
+                current_buffers[name].copy_(saved_buffer)
+
+        model.train(was_training)
+
+
+
+
+
+
+
+
+def server_reference_grad(
+    net,
+    probe_loader,
+    batches=1,
+):
+    model = net.model.model
+
+    was_training = model.training
+
+
+    buffer_backup = {
+        name: buffer.detach().clone()
+        for name, buffer in model.named_buffers()
+    }
+
+    model.train()
+    model.zero_grad(set_to_none=True)
+
+    used_batches = 0
+
+    try:
+        for batch_index, batch in enumerate(probe_loader):
+            if batch_index >= batches:
+                break
+
+
+            batch = {
+                key: (
+                    value.to(DEVICE, non_blocking=True)
+                    if torch.is_tensor(value)
+                    else value
+                )
+                for key, value in batch.items()
+            }
+
+
+            batch["img"] = batch["img"].float() / 255.0
+
+            loss, _ = model.loss(batch)
+
+            total_loss = loss.sum()
+
+            total_loss.backward()
+
+            used_batches += 1
+
+        if used_batches == 0:
+            raise RuntimeError(
+                "Nenhum batch disponível para o probe."
+            )
+
+        gradients = []
+
+        for parameter in model.parameters():
+            if parameter.grad is None:
+                gradients.append(
+                    torch.zeros_like(parameter).reshape(-1)
+                )
+            else:
+                gradients.append(
+                    parameter.grad.detach().reshape(-1)
+                )
+
+        reference_gradient = torch.cat(
+            gradients
+        )
+
+        reference_gradient /= float(used_batches)
+
+    finally:
+        model.zero_grad(set_to_none=True)
+
+        with torch.no_grad():
+            current_buffers = dict(
+                model.named_buffers()
+            )
+
+            for name, saved_buffer in buffer_backup.items():
+                current_buffers[name].copy_(
+                    saved_buffer
+                )
+
+        model.train(was_training)
+
+    return reference_gradient.cpu().numpy()
+

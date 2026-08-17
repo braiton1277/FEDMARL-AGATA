@@ -5,8 +5,15 @@ from collections import OrderedDict
 import numpy as np
 import torch
 import yaml
+from ultralytics.cfg import get_cfg
 from ultralytics import YOLO
 from ultralytics.nn.tasks import DetectionModel
+from ultralytics.data import (
+    build_dataloader,
+    build_yolo_dataset,
+)
+from ultralytics.data.utils import check_det_dataset
+
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -23,6 +30,7 @@ def build_model(base_weights_path):
     )
 
     custom_model.load(model.model)
+    custom_model.args = get_cfg()
     custom_model.names = {i: str(i) for i in range(num_classes)}
 
     model.model = custom_model
@@ -159,6 +167,139 @@ def load_data(data_path: str):
     return ProxyLoader(train_set), ProxyLoader(test_set)
 
 
+def load_local_probe_loader(
+    data_path: str,
+    batch_size: int = 2,
+):
+    data_yaml = _get_data_yaml_path(data_path)
+
+    data = check_det_dataset(
+        data_yaml,
+        autodownload=False,
+    )
+
+    cfg = get_cfg(
+        overrides={
+            "task": "detect",
+            "imgsz": 640,
+            "batch": batch_size,
+            "workers": 0,
+            "rect": True,
+            "cache": False,
+        }
+    )
+
+    dataset = build_yolo_dataset(
+        cfg=cfg,
+        img_path=data["train"],
+        batch=batch_size,
+        data=data,
+        mode="val",
+        rect=True,
+        stride=32,
+    )
+
+    loader = build_dataloader(
+        dataset=dataset,
+        batch=batch_size,
+        workers=0,
+        shuffle=False,
+        rank=-1,
+        device=DEVICE,
+    )
+
+    return loader
+
+
+def probe_loss(
+    net,
+    probe_loader,
+    max_batches: int = 5,
+    device=DEVICE,
+):
+    model = net.model.model
+
+    was_training = model.training
+
+    buffer_backup = {
+        name: buffer.detach().clone()
+        for name, buffer in model.named_buffers()
+    }
+
+    model.train()
+
+    total_loss = 0.0
+    total_examples = 0
+
+    try:
+        with torch.no_grad():
+
+            for batch_index, batch in enumerate(probe_loader):
+
+                if batch_index >= max_batches:
+                    break
+
+                batch = {
+                    key: (
+                        value.to(device, non_blocking=True)
+                        if torch.is_tensor(value)
+                        else value
+                    )
+                    for key, value in batch.items()
+                }
+
+                batch["img"] = (
+                    batch["img"].float() / 255.0
+                )
+
+                loss, _ = model.loss(batch)
+
+                batch_size = int(
+                    batch["img"].shape[0]
+                )
+
+                total_loss += float(
+                    loss.detach().sum().item()
+                )
+
+                total_examples += batch_size
+
+        if total_examples == 0:
+            raise RuntimeError(
+                "Não foi possível calcular probe_loss: "
+                "nenhuma imagem disponível."
+            )
+
+        result = (
+            total_loss / float(total_examples)
+        )
+
+        print(
+            f"[PROBE LOCAL] loss={result:.6f}, "
+            f"images={total_examples}",
+            flush=True,
+        )
+
+        return result
+
+    finally:
+        with torch.no_grad():
+
+            current_buffers = dict(
+                model.named_buffers()
+            )
+
+            for name, saved_buffer in buffer_backup.items():
+                current_buffers[name].copy_(
+                    saved_buffer
+                )
+
+        model.train(was_training)
+
+
+
+
+
 def load_parameters(model_path: str) -> YOLO:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return YOLO(model_path).to(device)
@@ -249,13 +390,19 @@ def get_weights(net: Net) -> list[np.ndarray]:
     return [tensor.cpu().numpy() for tensor in net.model.model.state_dict().values()]
 
 
-def set_weights(net: Net, parameters: list[np.ndarray]):
-    if net.model is None:
-        net.model = build_model(net.base_weights_path)
-        net.model.model.to(net.device)
+def set_weights(net, parameters):
+    net.model = build_model(net.base_weights_path)
 
     keys = list(net.model.model.state_dict().keys())
-    updated_weights = {k: torch.tensor(v) for k, v in zip(keys, parameters)}
-    state_dict = OrderedDict(updated_weights)
-    net.model.model.load_state_dict(state_dict, strict=False)
+
+    updated_weights = {
+        k: torch.tensor(v)
+        for k, v in zip(keys, parameters)
+    }
+
+    net.model.model.load_state_dict(
+        OrderedDict(updated_weights),
+        strict=False
+    )
+
     return net
