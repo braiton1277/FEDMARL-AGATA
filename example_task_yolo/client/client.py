@@ -51,11 +51,21 @@ class FlowerClient(NumPyClient):
 
         results = train(net, trainloader, testloader, epochs=1, device=DEVICE)
 
-        results["client_id"] = os.environ.get("HOSTNAME", "unknown")
+        client_id = os.environ.get(
+            "CLIENT_ID",
+            os.environ.get("HOSTNAME", "unknown"),
+        )
+
+        results["client_id"] = client_id
+
+        print(
+            f"[CLIENT ID] {client_id}",
+            flush=True,
+        )
 
         results["probe_loss"] = float(
             probe_value
-            )
+        )
 
 
         return get_weights(net), len(trainloader.dataset), results

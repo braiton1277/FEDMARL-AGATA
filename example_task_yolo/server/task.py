@@ -59,7 +59,7 @@ def get_weights(net: Net) -> list[np.ndarray]:
 
 def set_weights(net: Net, parameters: list[np.ndarray]):
     if net.model is None:
-        net.model = YOLO(net.base_weights_path)
+        net.model = build_model(net.base_weights_path)
         net.model.model.to(net.device)
 
     keys = list(net.model.model.state_dict().keys())

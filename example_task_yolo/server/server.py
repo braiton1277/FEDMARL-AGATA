@@ -253,6 +253,47 @@ class PrioritizedReplayJoint:
         )
 
 
+    def state_dict(self):
+        return {
+            "obs": self.obs[:self.n].copy(),
+            "act": self.act[:self.n].copy(),
+            "reward": self.reward[:self.n].copy(),
+            "obs2": self.obs2[:self.n].copy(),
+            "done": self.done[:self.n].copy(),
+            "priorities": self.priorities[:self.n].copy(),
+
+            "position": self.position,
+            "n": self.n,
+            "max_priority": self.max_priority,
+
+            "rng_state": self.rng.bit_generator.state,
+        }
+
+
+
+
+    def load_state_dict(self, state):
+        n = int(state["n"])
+
+        if n > self.capacity:
+            raise ValueError(
+                f"Replay salvo possui {n} transições, "
+                f"mas capacity={self.capacity}."
+            )
+
+        self.obs[:n] = state["obs"]
+        self.act[:n] = state["act"]
+        self.reward[:n] = state["reward"]
+        self.obs2[:n] = state["obs2"]
+        self.done[:n] = state["done"]
+        self.priorities[:n] = state["priorities"]
+
+        self.n = n
+        self.position = int(state["position"])
+        self.max_priority = float(state["max_priority"])
+
+        self.rng.bit_generator.state = state["rng_state"]
+
 
 
 class LocalFTDL:
@@ -282,23 +323,24 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
 reference_momentum = None
 MOMENTUM_BETA = 0.9
 
-vdn_q = None
 
 
-vdn_q_tgt = None
-vdn_optimizer = None
-vdn_train_calls = 0
+
 
 VDN_GAMMA = 0.90
 VDN_GRAD_CLIP = 1.0
 VDN_TARGET_SYNC_EVERY = 2
 
 
-pending_transition = None
 
 
 
-replay_buffer = None
+
+VDN_WARMUP_TRANSITIONS = 2
+VDN_SELECTION_SEED = 4096
+
+
+completed_rounds = 0
 
 client_staleness = {}
 client_streak = {}
@@ -445,6 +487,164 @@ class AgentMLP(torch.nn.Module):
 
 
 
+class VDNSelector:
+    def __init__(
+        self,
+        gamma=0.90,
+        grad_clip=1.0,
+        target_sync_every=2,
+        warmup_transitions=2,
+        selection_seed=4096,
+    ):
+        self.gamma = gamma
+        self.grad_clip = grad_clip
+        self.target_sync_every = target_sync_every
+        self.warmup_transitions = warmup_transitions
+        self.selection_seed = selection_seed
+
+        self.q = None
+        self.q_tgt = None
+        self.optimizer = None
+
+        self.replay_buffer = None
+        self.pending_transition = None
+
+        self.train_calls = 0
+
+
+
+    def state_dict(self):
+        return {
+            "q": (
+                self.q.state_dict()
+                if self.q is not None
+                else None
+            ),
+            "q_tgt": (
+                self.q_tgt.state_dict()
+                if self.q_tgt is not None
+                else None
+            ),
+            "optimizer": (
+                self.optimizer.state_dict()
+                if self.optimizer is not None
+                else None
+            ),
+            "replay_buffer": (
+                self.replay_buffer.state_dict()
+                if self.replay_buffer is not None
+                else None
+            ),
+            "train_calls": self.train_calls,
+            "pending_transition": self.pending_transition,
+        }
+
+    def load_state_dict(self, state):
+        rng_state = torch.random.get_rng_state()
+
+        torch.manual_seed(self.selection_seed)
+
+        self.q = AgentMLP(
+            d_in=5,
+            hidden=128,
+        ).to(DEVICE)
+
+        self.q_tgt = AgentMLP(
+            d_in=5,
+            hidden=128,
+        ).to(DEVICE)
+
+        self.optimizer = torch.optim.Adam(
+            self.q.parameters(),
+            lr=1e-3,
+            weight_decay=1e-4,
+        )
+
+        torch.random.set_rng_state(rng_state)
+
+        if state["q"] is not None:
+            self.q.load_state_dict(state["q"])
+
+        if state["q_tgt"] is not None:
+            self.q_tgt.load_state_dict(state["q_tgt"])
+
+        self.q_tgt.eval()
+
+        if state["optimizer"] is not None:
+            self.optimizer.load_state_dict(
+                state["optimizer"]
+            )
+
+        replay_state = state.get("replay_buffer")
+
+        if replay_state is not None:
+            n_agents = int(
+                replay_state["obs"].shape[1]
+            )
+
+            d_in = int(
+                replay_state["obs"].shape[2]
+            )
+
+            self.replay_buffer = PrioritizedReplayJoint(
+                capacity=20000,
+                n_agents=n_agents,
+                d_in=d_in,
+                alpha=0.6,
+                eps=1e-3,
+                seed=self.selection_seed,
+            )
+
+            self.replay_buffer.load_state_dict(
+                replay_state
+            )
+
+        else:
+            self.replay_buffer = None
+
+        self.train_calls = int(
+            state.get("train_calls", 0)
+        )
+
+        self.pending_transition = state.get(
+            "pending_transition"
+        )
+
+
+
+vdn_selector = VDNSelector()
+
+
+def experiment_state_dict(
+    logical_round,
+    client_ids,
+):
+    return {
+        "completed_rounds": int(logical_round),
+
+        "client_ids": list(client_ids),
+
+        "reference_momentum": (
+            reference_momentum.copy()
+            if reference_momentum is not None
+            else None
+        ),
+
+        "client_staleness": dict(
+            client_staleness
+        ),
+
+        "client_streak": dict(
+            client_streak
+        ),
+
+        "validation_loss_history": list(
+            validation_loss_history
+        ),
+
+        "vdn": vdn_selector.state_dict(),
+    }
+
 
 def windowed_reward(
     loss_history,
@@ -481,16 +681,20 @@ def windowed_reward(
 
 
 
+VDN_PER_BETA_START = 0.4
+VDN_PER_BETA_END = 1.0
+VDN_PER_BETA_STEPS = 4000
+
 
 
 
 
 class ModFedAvg(FedAvg):
     def aggregate_fit(self, server_rounds, results, failures):
-        global net, comm_round, reference_momentum, vdn_q
-        global validation_loss_history, pending_transition
-        global replay_buffer, vdn_q_tgt, vdn_optimizer, vdn_train_calls
-        comm_round = server_rounds
+        global net, comm_round, reference_momentum, completed_rounds
+        global validation_loss_history
+        logical_round = completed_rounds + server_rounds
+        comm_round = logical_round
 
         all_client_ids = sorted([
             fit_res.metrics.get("client_id", "unknown")
@@ -657,8 +861,8 @@ class ModFedAvg(FedAvg):
             )
 
 
-        if replay_buffer is None:
-            replay_buffer = PrioritizedReplayJoint(
+        if vdn_selector.replay_buffer is None:
+            vdn_selector.replay_buffer = PrioritizedReplayJoint(
                 capacity=20000,
                 n_agents=len(all_client_ids),
                 d_in=5,
@@ -669,9 +873,9 @@ class ModFedAvg(FedAvg):
 
             print(
                 f"[REPLAY] criado: "
-                f"capacity={replay_buffer.capacity}, "
-                f"n_agents={replay_buffer.n_agents}, "
-                f"d_in={replay_buffer.d_in}"
+                f"capacity={vdn_selector.replay_buffer.capacity}, "
+                f"n_agents={vdn_selector.replay_buffer.n_agents}, "
+                f"d_in={vdn_selector.replay_buffer.d_in}"
             )
 
 
@@ -686,28 +890,28 @@ class ModFedAvg(FedAvg):
 
 
 
-        if vdn_q is None:
+        if vdn_selector.q is None:
             rng_state = torch.random.get_rng_state()
             torch.manual_seed(4096)
 
-            vdn_q = AgentMLP(
+            vdn_selector.q = AgentMLP(
                 d_in=5,
                 hidden=128,
             ).to(DEVICE)
 
-            vdn_q_tgt = AgentMLP(
+            vdn_selector.q_tgt = AgentMLP(
                 d_in=5,
                 hidden=128,
             ).to(DEVICE)
 
-            vdn_q_tgt.load_state_dict(
-                vdn_q.state_dict()
+            vdn_selector.q_tgt.load_state_dict(
+                vdn_selector.q.state_dict()
             )
 
-            vdn_q_tgt.eval()
+            vdn_selector.q_tgt.eval()
 
-            vdn_optimizer = torch.optim.Adam(
-                vdn_q.parameters(),
+            vdn_selector.optimizer = torch.optim.Adam(
+                vdn_selector.q.parameters(),
                 lr=1e-3,
                 weight_decay=1e-4,
             )
@@ -719,7 +923,7 @@ class ModFedAvg(FedAvg):
             print("[VDN INIT] q + q_tgt + optimizer criados")
 
 
-        vdn_q.eval()
+        vdn_selector.q.eval()
 
         with torch.no_grad():
             state_tensor = torch.tensor(
@@ -728,7 +932,7 @@ class ModFedAvg(FedAvg):
                 device=DEVICE,
             )
 
-            q_values = vdn_q(state_tensor)
+            q_values = vdn_selector.q(state_tensor)
 
         q_values_np = (
             q_values
@@ -759,25 +963,56 @@ class ModFedAvg(FedAvg):
             - q_values_np[:, 0]
         )
 
-        ranking_indices = np.argsort(
-            advantages
-        )[::-1]
 
-        topk_indices = ranking_indices[
-            :min(k_selected, len(all_client_ids))
-        ]
-
-        vdn_ranked_ids = [
-            all_client_ids[index]
-            for index in topk_indices
-        ]
-
-        print(
-            f"[VDN RANK] Top-{k_selected}="
-            f"{vdn_ranked_ids}"
+        effective_buffer_n = (
+            vdn_selector.replay_buffer.n
+            + (1 if vdn_selector.pending_transition is not None else 0)
         )
 
 
+
+        if effective_buffer_n < VDN_WARMUP_TRANSITIONS:
+            warmup_rng = random.Random(
+                VDN_SELECTION_SEED + logical_round
+            )
+
+            vdn_ranked_ids = warmup_rng.sample(
+                all_client_ids,
+                k=min(
+                    k_selected,
+                    len(all_client_ids),
+                ),
+            )
+
+            print(
+                f"[VDN WARMUP] "
+                f"round={logical_round}, "
+                f"buffer_n={effective_buffer_n}, "
+                f"selected={vdn_ranked_ids}"
+            )
+
+        else:
+
+            ranking_indices = np.argsort(
+                advantages
+            )[::-1]
+
+            topk_indices = ranking_indices[
+                :min(
+                    k_selected,
+                    len(all_client_ids),
+                )
+            ]
+
+            vdn_ranked_ids = [
+                all_client_ids[index]
+                for index in topk_indices
+            ]
+
+            print(
+                f"[VDN RANK] "
+                f"Top-{k_selected}={vdn_ranked_ids}"
+            )
 
         selection_mode = os.environ.get("SELECTION_MODE", "random").lower()
 
@@ -786,7 +1021,7 @@ class ModFedAvg(FedAvg):
             k_selected = int(os.environ.get("K_SELECTED", "2"))
             random_seed = int(os.environ.get("RANDOM_SELECTION_SEED", "4096"))
 
-            rng = random.Random(random_seed + server_rounds)
+            rng = random.Random(random_seed + logical_round)
 
             selected_results = rng.sample(
                 results,
@@ -799,7 +1034,7 @@ class ModFedAvg(FedAvg):
                 ]
 
             print(
-                f"[RANDOM] Round {server_rounds}: "
+                f"[RANDOM] Round {logical_round}: "
                 f"received={len(results)}, "
                 f"selected={len(selected_results)}, "
                 f"selected_ids={selected_ids}, "
@@ -827,7 +1062,7 @@ class ModFedAvg(FedAvg):
             selected_ids = vdn_ranked_ids
 
             print(
-                f"[VDN SELECT] Round {server_rounds}: "
+                f"[VDN SELECT] Round {logical_round}: "
                 f"received={len(results)}, "
                 f"selected={len(selected_results)}, "
                 f"selected_ids={selected_ids}, "
@@ -915,9 +1150,9 @@ class ModFedAvg(FedAvg):
             )
 
 
-        if pending_transition is not None:
+        if vdn_selector.pending_transition is not None:
             previous_state, previous_action, previous_reward = (
-            pending_transition
+            vdn_selector.pending_transition
             )
 
             print(
@@ -929,7 +1164,7 @@ class ModFedAvg(FedAvg):
             )
 
 
-            replay_buffer.add(
+            vdn_selector.replay_buffer.add(
                 obs=previous_state,
                 act=previous_action,
                 reward=previous_reward,
@@ -939,11 +1174,31 @@ class ModFedAvg(FedAvg):
 
             print(
                 f"[REPLAY ADD] "
-                f"buffer_n={replay_buffer.n}"
+                f"buffer_n={vdn_selector.replay_buffer.n}"
+            )
+
+            beta_step = min(
+                vdn_selector.train_calls,
+                VDN_PER_BETA_STEPS,
+            )
+
+            beta_fraction = (
+                beta_step
+                / max(1, VDN_PER_BETA_STEPS)
+            )
+
+            vdn_beta = (
+                VDN_PER_BETA_START
+                + beta_fraction
+                * (
+                    VDN_PER_BETA_END
+                    - VDN_PER_BETA_START
+                )
             )
 
 
-            if replay_buffer.n >= 2:
+
+            if vdn_selector.replay_buffer.n >= 2:
                 (
                 sample_obs,
                 sample_act,
@@ -952,9 +1207,9 @@ class ModFedAvg(FedAvg):
                 sample_done,
                 sample_indices,
                 sample_weights,
-            ) = replay_buffer.sample(
+            ) = vdn_selector.replay_buffer.sample(
                 batch_size=2,
-                beta=0.4,
+                beta=vdn_beta,
             )
 
                 print(
@@ -1007,10 +1262,10 @@ class ModFedAvg(FedAvg):
                     device=DEVICE,
                 )
 
-                vdn_q.train()
-                vdn_q_tgt.eval()
+                vdn_selector.q.train()
+                vdn_selector.q_tgt.eval()
 
-                current_q = vdn_q(
+                current_q = vdn_selector.q(
                     obs_tensor.reshape(
                         batch_count * agent_count,
                         5,
@@ -1031,7 +1286,7 @@ class ModFedAvg(FedAvg):
                 )
 
                 with torch.no_grad():
-                    next_q_online = vdn_q(
+                    next_q_online = vdn_selector.q(
                         next_obs_tensor.reshape(
                             batch_count * agent_count,
                             5,
@@ -1042,7 +1297,7 @@ class ModFedAvg(FedAvg):
                         2,
                     )
 
-                    next_q_target = vdn_q_tgt(
+                    next_q_target = vdn_selector.q_tgt(
                         next_obs_tensor.reshape(
                             batch_count * agent_count,
                             5,
@@ -1127,34 +1382,34 @@ class ModFedAvg(FedAvg):
                         "A perda do VDN não é finita."
                     )
 
-                vdn_optimizer.zero_grad()
+                vdn_selector.optimizer.zero_grad()
                 loss.backward()
 
                 torch.nn.utils.clip_grad_norm_(
-                    vdn_q.parameters(),
+                    vdn_selector.q.parameters(),
                     VDN_GRAD_CLIP,
                 )
 
-                vdn_optimizer.step()
+                vdn_selector.optimizer.step()
 
-                replay_buffer.update_priorities(
+                vdn_selector.replay_buffer.update_priorities(
                     indices=sample_indices,
                     td_error_absolute=td_error_absolute,
                 )
 
-                vdn_train_calls += 1
+                vdn_selector.train_calls += 1
 
                 target_synced = False
 
                 if (
-                    vdn_train_calls
+                    vdn_selector.train_calls
                     % VDN_TARGET_SYNC_EVERY
                     == 0
                 ):
-                    vdn_q_tgt.load_state_dict(
-                        vdn_q.state_dict()
+                    vdn_selector.q_tgt.load_state_dict(
+                        vdn_selector.q.state_dict()
                     )
-                    vdn_q_tgt.eval()
+                    vdn_selector.q_tgt.eval()
                     target_synced = True
 
                 print(
@@ -1162,22 +1417,21 @@ class ModFedAvg(FedAvg):
                     f"loss={float(loss.item()):.8f}, "
                     f"td_abs_mean="
                     f"{float(td_error_absolute.mean()):.6f}, "
-                    f"updates={vdn_train_calls}, "
+                    f"beta={vdn_beta:.6f}, "
+                    f"updates={vdn_selector.train_calls}, "
                     f"target_sync={target_synced}"
-                )
-
-
+                    )
 
         total_rounds = int(
             os.environ.get("NUM_ROUNDS", "3")
         )
 
         is_last_round = (
-            server_rounds >= total_rounds
+            logical_round >= total_rounds
         )
 
         if is_last_round:
-            replay_buffer.add(
+            vdn_selector.replay_buffer.add(
                 obs=state_matrix.copy(),
                 act=actions.copy(),
                 reward=float(reward),
@@ -1185,17 +1439,17 @@ class ModFedAvg(FedAvg):
                 done=True,
             )
 
-            pending_transition = None
+            vdn_selector.pending_transition = None
 
             print(
                 f"[TRANSITION TERMINAL] "
-                f"round={server_rounds}, "
-                f"buffer_n={replay_buffer.n}, "
+                f"round={logical_round}, "
+                f"buffer_n={vdn_selector.replay_buffer.n}, "
                 f"done=True"
             )
 
         else:
-            pending_transition = (
+            vdn_selector.pending_transition = (
                 state_matrix.copy(),
                 actions.copy(),
                 float(reward),
@@ -1214,6 +1468,26 @@ class ModFedAvg(FedAvg):
                 f.write(net_to_bytes(net))
         except Exception as e:
             print(f"{e}: Could not save model")
+        try:
+            training_state = experiment_state_dict(
+                logical_round=logical_round,
+                client_ids=all_client_ids,
+            )
+
+            torch.save(
+                training_state,
+                f"/model/{ftdl.task_id}_training_state.pt",
+            )
+
+            print(
+                f"[CHECKPOINT] training state salvo, "
+                f"round={logical_round}"
+            )
+
+        except Exception as e:
+            print(
+                f"{e}: Could not save training state"
+            )
 
         return aggregated_parameters, metrics
 
@@ -1252,11 +1526,13 @@ if __name__ == "__main__":
         ftdl = LocalFTDL(side="server") if LOCAL_TEST else FTDL(side="server")
 
 
-        # Fix after
-        num_clients = int(os.environ.get("NUM_CLIENTS", "2"))
-        num_rounds = int(os.environ.get("NUM_ROUNDS", "5"))
 
-        config = ServerConfig(num_rounds=num_rounds)
+        num_clients = int(os.environ.get("NUM_CLIENTS", "2"))
+
+        total_rounds = int(
+            os.environ.get("NUM_ROUNDS", "5")
+        )
+
 
         net = Net()
 
@@ -1267,6 +1543,119 @@ if __name__ == "__main__":
             print(f"{e}: Could not load model from file. Starting from scratch.")
 
 
+
+        training_state_path = (
+            f"/model/{ftdl.task_id}_training_state.pt"
+        )
+
+        try:
+            training_state = torch.load(
+                training_state_path,
+                map_location="cpu",
+                weights_only=False,
+            )
+
+            saved_client_ids = training_state.get(
+                "client_ids",
+                [],
+            )
+
+            if (
+                saved_client_ids
+                and len(saved_client_ids) != num_clients
+            ):
+                raise ValueError(
+                    f"Checkpoint possui {len(saved_client_ids)} clientes, "
+                    f"mas NUM_CLIENTS={num_clients}."
+                )
+
+            completed_rounds = int(
+                training_state.get(
+                    "completed_rounds",
+                    0,
+                )
+            )
+
+            reference_momentum = training_state.get(
+                "reference_momentum"
+            )
+
+            client_staleness.clear()
+            client_staleness.update(
+                training_state.get(
+                    "client_staleness",
+                    {},
+                )
+            )
+
+            client_streak.clear()
+            client_streak.update(
+                training_state.get(
+                    "client_streak",
+                    {},
+                )
+            )
+
+            validation_loss_history.clear()
+            validation_loss_history.extend(
+                training_state.get(
+                    "validation_loss_history",
+                    [],
+                )
+            )
+
+            vdn_state = training_state.get("vdn")
+
+            if vdn_state is not None:
+                vdn_selector.load_state_dict(
+                    vdn_state
+                )
+
+            replay_n = (
+                vdn_selector.replay_buffer.n
+                if vdn_selector.replay_buffer is not None
+                else 0
+            )
+
+            print(
+                f"[CHECKPOINT] training state carregado, "
+                f"completed_rounds={completed_rounds}, "
+                f"vdn_updates={vdn_selector.train_calls}, "
+                f"replay_n={replay_n}"
+            )
+
+        except FileNotFoundError:
+            print(
+                "[CHECKPOINT] training state não encontrado; "
+                "iniciando estado da VDN do zero"
+            )
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Could not load training state: {e}"
+            ) from e
+
+
+        remaining_rounds = (
+            total_rounds - completed_rounds
+        )
+
+        if remaining_rounds <= 0:
+            print(
+                f"[CHECKPOINT] Experimento já concluído: "
+                f"{completed_rounds}/{total_rounds} rodadas."
+            )
+            raise SystemExit(0)
+
+        print(
+            f"[ROUNDS] completed={completed_rounds}, "
+            f"remaining={remaining_rounds}, "
+            f"target={total_rounds}"
+        )
+
+        config = ServerConfig(
+            num_rounds=remaining_rounds
+        )
 
         probe_loader = load_probe_loader()
 
