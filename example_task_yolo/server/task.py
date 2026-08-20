@@ -78,7 +78,7 @@ def bytes_to_net(net: Net, bytes_data: bytes)->Net:
 
 
 def load_probe_loader(
-    data_yaml="/data/cityscapes/data.yaml",
+    data_yaml="/data/cityscapes/yolo/data.yaml",
     batch_size=2,
 ):
     data = check_det_dataset(

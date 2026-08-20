@@ -13,9 +13,9 @@ services:
       TASK_ID: "afed"
       LOCAL_TEST: "1"
       BASE_WEIGHTS_PATH: "/data/cityscapes/yolo11n.pt"
-      DATA_YAML_PATH: "/data/cityscapes/data.yaml"
+      DATA_YAML_PATH: "/data/cityscapes/yolo/data.yaml"
       LOCAL_CKPT_PATH: "/tmp/yolo_local_client.pt"
       BATCH_SIZE: "8"
-      NUM_CLASSES: "1"
+      NUM_CLASSES: "8"
     volumes:
-      - ${DATA_PATH}:/data
+      - ${DATA_PATH}:/data/cityscapes

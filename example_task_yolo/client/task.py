@@ -335,6 +335,7 @@ def train(net: Net, trainloader, valloader, epochs: int, device: torch.device):
             verbose=False,
             workers=0,
             project=tmpdir,
+            amp=False,
         )
 
     save_parameters(net.model, ckpt_path)

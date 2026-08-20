@@ -355,6 +355,8 @@ def update_staleness_streak(
 ):
     selected_set = set(selected_ids)
 
+
+
     for client_id in all_client_ids:
         if client_id in selected_set:
             staleness[client_id] = 0.0
@@ -696,6 +698,13 @@ class ModFedAvg(FedAvg):
         logical_round = completed_rounds + server_rounds
         comm_round = logical_round
 
+
+        selection_mode = os.environ.get(
+            "SELECTION_MODE",
+            "random",
+        ).lower()
+
+
         all_client_ids = sorted([
             fit_res.metrics.get("client_id", "unknown")
             for _, fit_res in results])
@@ -777,6 +786,9 @@ class ModFedAvg(FedAvg):
                 )
 
 
+
+
+
         for client_id, probe_value in client_probe_losses.items():
             print(
                 f"[PROBE LOSS] client={client_id}, "
@@ -851,174 +863,175 @@ class ModFedAvg(FedAvg):
             )
 
 
-
-        state_matrix = build_context_matrix_vdn(
-            client_ids=all_client_ids,
-            client_projections=client_projections,
-            client_probe_losses=client_probe_losses,
-            staleness=client_staleness,
-            streak=client_streak,
-            )
-
-
-        if vdn_selector.replay_buffer is None:
-            vdn_selector.replay_buffer = PrioritizedReplayJoint(
-                capacity=20000,
-                n_agents=len(all_client_ids),
-                d_in=5,
-                alpha=0.6,
-                eps=1e-3,
-                seed=4096,
-            )
-
-            print(
-                f"[REPLAY] criado: "
-                f"capacity={vdn_selector.replay_buffer.capacity}, "
-                f"n_agents={vdn_selector.replay_buffer.n_agents}, "
-                f"d_in={vdn_selector.replay_buffer.d_in}"
-            )
-
-
-
-
-        for index, client_id in enumerate(all_client_ids):
-            print(
-                f"[VDN STATE] client={client_id}, "
-                f"state={state_matrix[index].tolist()}"
-                )
-
-
-
-
-        if vdn_selector.q is None:
-            rng_state = torch.random.get_rng_state()
-            torch.manual_seed(4096)
-
-            vdn_selector.q = AgentMLP(
-                d_in=5,
-                hidden=128,
-            ).to(DEVICE)
-
-            vdn_selector.q_tgt = AgentMLP(
-                d_in=5,
-                hidden=128,
-            ).to(DEVICE)
-
-            vdn_selector.q_tgt.load_state_dict(
-                vdn_selector.q.state_dict()
-            )
-
-            vdn_selector.q_tgt.eval()
-
-            vdn_selector.optimizer = torch.optim.Adam(
-                vdn_selector.q.parameters(),
-                lr=1e-3,
-                weight_decay=1e-4,
-            )
-
-            torch.random.set_rng_state(
-                rng_state
-            )
-
-            print("[VDN INIT] q + q_tgt + optimizer criados")
-
-
-        vdn_selector.q.eval()
-
-        with torch.no_grad():
-            state_tensor = torch.tensor(
-                state_matrix,
-                dtype=torch.float32,
-                device=DEVICE,
-            )
-
-            q_values = vdn_selector.q(state_tensor)
-
-        q_values_np = (
-            q_values
-            .detach()
-            .cpu()
-            .numpy()
-        )
-
-        for index, client_id in enumerate(all_client_ids):
-            q0 = float(q_values_np[index, 0])
-            q1 = float(q_values_np[index, 1])
-            advantage = q1 - q0
-
-            print(
-                f"[VDN Q] client={client_id}, "
-                f"Q0={q0:+.6f}, "
-                f"Q1={q1:+.6f}, "
-                f"advantage={advantage:+.6f}"
-            )
-
-
         k_selected = int(
             os.environ.get("K_SELECTED", "2")
         )
 
-        advantages = (
-            q_values_np[:, 1]
-            - q_values_np[:, 0]
-        )
-
-
-        effective_buffer_n = (
-            vdn_selector.replay_buffer.n
-            + (1 if vdn_selector.pending_transition is not None else 0)
-        )
-
-
-
-        if effective_buffer_n < VDN_WARMUP_TRANSITIONS:
-            warmup_rng = random.Random(
-                VDN_SELECTION_SEED + logical_round
-            )
-
-            vdn_ranked_ids = warmup_rng.sample(
-                all_client_ids,
-                k=min(
-                    k_selected,
-                    len(all_client_ids),
-                ),
-            )
-
-            print(
-                f"[VDN WARMUP] "
-                f"round={logical_round}, "
-                f"buffer_n={effective_buffer_n}, "
-                f"selected={vdn_ranked_ids}"
-            )
-
-        else:
-
-            ranking_indices = np.argsort(
-                advantages
-            )[::-1]
-
-            topk_indices = ranking_indices[
-                :min(
-                    k_selected,
-                    len(all_client_ids),
+        if selection_mode == "vdn":
+            state_matrix = build_context_matrix_vdn(
+                client_ids=all_client_ids,
+                client_projections=client_projections,
+                client_probe_losses=client_probe_losses,
+                staleness=client_staleness,
+                streak=client_streak,
                 )
-            ]
 
-            vdn_ranked_ids = [
-                all_client_ids[index]
-                for index in topk_indices
-            ]
 
-            print(
-                f"[VDN RANK] "
-                f"Top-{k_selected}={vdn_ranked_ids}"
+
+
+            if vdn_selector.replay_buffer is None:
+                vdn_selector.replay_buffer = PrioritizedReplayJoint(
+                    capacity=20000,
+                    n_agents=len(all_client_ids),
+                    d_in=5,
+                    alpha=0.6,
+                    eps=1e-3,
+                    seed=4096,
+                )
+
+                print(
+                    f"[REPLAY] criado: "
+                    f"capacity={vdn_selector.replay_buffer.capacity}, "
+                    f"n_agents={vdn_selector.replay_buffer.n_agents}, "
+                    f"d_in={vdn_selector.replay_buffer.d_in}"
+                )
+
+
+
+
+            for index, client_id in enumerate(all_client_ids):
+                print(
+                    f"[VDN STATE] client={client_id}, "
+                    f"state={state_matrix[index].tolist()}"
+                    )
+
+
+
+
+            if vdn_selector.q is None:
+                rng_state = torch.random.get_rng_state()
+                torch.manual_seed(4096)
+
+                vdn_selector.q = AgentMLP(
+                    d_in=5,
+                    hidden=128,
+                ).to(DEVICE)
+
+                vdn_selector.q_tgt = AgentMLP(
+                    d_in=5,
+                    hidden=128,
+                ).to(DEVICE)
+
+                vdn_selector.q_tgt.load_state_dict(
+                    vdn_selector.q.state_dict()
+                )
+
+                vdn_selector.q_tgt.eval()
+
+                vdn_selector.optimizer = torch.optim.Adam(
+                    vdn_selector.q.parameters(),
+                    lr=1e-3,
+                    weight_decay=1e-4,
+                )
+
+                torch.random.set_rng_state(
+                    rng_state
+                )
+
+                print("[VDN INIT] q + q_tgt + optimizer criados")
+
+
+            vdn_selector.q.eval()
+
+            with torch.no_grad():
+                state_tensor = torch.tensor(
+                    state_matrix,
+                    dtype=torch.float32,
+                    device=DEVICE,
+                )
+
+                q_values = vdn_selector.q(state_tensor)
+
+            q_values_np = (
+                q_values
+                .detach()
+                .cpu()
+                .numpy()
             )
 
-        selection_mode = os.environ.get("SELECTION_MODE", "random").lower()
+            for index, client_id in enumerate(all_client_ids):
+                q0 = float(q_values_np[index, 0])
+                q1 = float(q_values_np[index, 1])
+                advantage = q1 - q0
+
+                print(
+                    f"[VDN Q] client={client_id}, "
+                    f"Q0={q0:+.6f}, "
+                    f"Q1={q1:+.6f}, "
+                    f"advantage={advantage:+.6f}"
+                )
+
+
+
+            advantages = (
+                q_values_np[:, 1]
+                - q_values_np[:, 0]
+            )
+
+
+            effective_buffer_n = (
+                vdn_selector.replay_buffer.n
+                + (1 if vdn_selector.pending_transition is not None else 0)
+            )
+
+
+
+            if effective_buffer_n < VDN_WARMUP_TRANSITIONS:
+                warmup_rng = random.Random(
+                    VDN_SELECTION_SEED + logical_round
+                )
+
+                vdn_ranked_ids = warmup_rng.sample(
+                    all_client_ids,
+                    k=min(
+                        k_selected,
+                        len(all_client_ids),
+                    ),
+                )
+
+                print(
+                    f"[VDN WARMUP] "
+                    f"round={logical_round}, "
+                    f"buffer_n={effective_buffer_n}, "
+                    f"selected={vdn_ranked_ids}"
+                )
+
+            else:
+
+                ranking_indices = np.argsort(
+                    advantages
+                )[::-1]
+
+                topk_indices = ranking_indices[
+                    :min(
+                        k_selected,
+                        len(all_client_ids),
+                    )
+                ]
+
+                vdn_ranked_ids = [
+                    all_client_ids[index]
+                    for index in topk_indices
+                ]
+
+                print(
+                    f"[VDN RANK] "
+                    f"Top-{k_selected}={vdn_ranked_ids}"
+                )
+
 
 
         if selection_mode == "random":
-            k_selected = int(os.environ.get("K_SELECTED", "2"))
             random_seed = int(os.environ.get("RANDOM_SELECTION_SEED", "4096"))
 
             rng = random.Random(random_seed + logical_round)
@@ -1430,7 +1443,8 @@ class ModFedAvg(FedAvg):
             logical_round >= total_rounds
         )
 
-        if is_last_round:
+
+        if selection_mode == "vdn" and is_last_round:
             vdn_selector.replay_buffer.add(
                 obs=state_matrix.copy(),
                 act=actions.copy(),
@@ -1448,7 +1462,7 @@ class ModFedAvg(FedAvg):
                 f"done=True"
             )
 
-        else:
+        elif selection_mode == "vdn":
             vdn_selector.pending_transition = (
                 state_matrix.copy(),
                 actions.copy(),

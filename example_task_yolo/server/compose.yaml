@@ -4,7 +4,9 @@ services:
     build:
       context: .
     image: task_afed_server_image
+    gpus: all
     environment:
+      BASE_WEIGHTS_PATH: "/data/cityscapes/yolo11n.pt"
       SERVER_BROKER_HOST: "146.164.69.148"
       SERVER_BROKER_PORT: "5673"
       TASK_ID: "afed"
@@ -14,9 +16,9 @@ services:
       K_SELECTED: "2"
       SELECTION_MODE: "vdn"
       RANDOM_SELECTION_SEED: "4096"
-      NUM_CLASSES: "1"
+      NUM_CLASSES: "8"
     ports:
       - "8089:8080"
     volumes:
       - ${MODEL_BACKUP_DIR}:/model
-      - ${DATA_PATH}:/data
+      - ${DATA_PATH}:/data/cityscapes

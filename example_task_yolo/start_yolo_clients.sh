@@ -21,10 +21,10 @@ for i in $(seq 0 $((NUM_CLIENTS - 1))); do
         -e TASK_ID="afed" \
         -e LOCAL_TEST="1" \
         -e BASE_WEIGHTS_PATH="/data/cityscapes/yolo11n.pt" \
-        -e DATA_YAML_PATH="/data/cityscapes/data.yaml" \
+	-e DATA_YAML_PATH="/data/cityscapes/yolo/client_configs/${CLIENT_ID}.yaml" \
         -e LOCAL_CKPT_PATH="/tmp/yolo_local_client.pt" \
         -e BATCH_SIZE="8" \
-        -e NUM_CLASSES="1" \
-        -v "${DATA_PATH}:/data" \
+        -e NUM_CLASSES="8" \
+        -v "${DATA_PATH}:/data/cityscapes" \
         task_afed_client_image
 done
