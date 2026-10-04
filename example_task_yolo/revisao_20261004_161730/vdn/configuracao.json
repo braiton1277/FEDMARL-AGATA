@@ -1,0 +1,936 @@
+{
+  "server": {
+    "image_id": "sha256:6208938fd906cea5ce39bf97762e27ca90d33774ce52832318639e5e5a793a6b",
+    "image_name": "sha256:6208938fd906cea5ce39bf97762e27ca90d33774ce52832318639e5e5a793a6b",
+    "command": [
+      "-u",
+      "server.py"
+    ],
+    "environment": {
+      "OMP_NUM_THREADS": "1",
+      "NUM_ROUNDS": "250",
+      "K_SELECTED": "5",
+      "GLOBAL_EVAL_EVERY": "10",
+      "NUM_CLASSES": "8",
+      "NUM_CLIENTS": "30",
+      "MAX_WORKERS": "8",
+      "SELECTION_MODE": "vdn",
+      "ROUND_TIMEOUT_SECONDS": "450",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      },
+      {
+        "source": "/home/gta/marcelo/fedagata/yolo/FEDMARL-AGATA/example_task_yolo/yolo_30_k5_vdn_20261004_015732/model",
+        "destination": "/model",
+        "read_write": true
+      }
+    ]
+  },
+  "client_00": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "NUM_CLASSES": "8",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "OMP_NUM_THREADS": "1",
+      "CLIENT_ID": "client_00",
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_00.yaml",
+      "BATCH_SIZE": "8",
+      "LOCAL_TEST": "1"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_01": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BATCH_SIZE": "8",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "SERVER_PORT": "8080",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "CLIENT_ID": "client_01",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_01.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "TASK_ID": "afed",
+      "OMP_NUM_THREADS": "1",
+      "NUM_CLASSES": "8",
+      "SERVER_HOST": "task_afed_server"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_02": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "CLIENT_ID": "client_02",
+      "SERVER_HOST": "task_afed_server",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_02.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "SERVER_PORT": "8080",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "NUM_CLASSES": "8",
+      "BATCH_SIZE": "8",
+      "TASK_ID": "afed"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_03": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "NUM_CLASSES": "8",
+      "CLIENT_ID": "client_03",
+      "LOCAL_TEST": "1",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_03.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "BATCH_SIZE": "8",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_04": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_04.yaml",
+      "FIT_ATTEMPTS": "2",
+      "NUM_CLASSES": "8",
+      "CLIENT_ID": "client_04",
+      "SERVER_PORT": "8080",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "BATCH_SIZE": "8",
+      "LOCAL_TEST": "1",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_HOST": "task_afed_server",
+      "FIT_TIMEOUT_SECONDS": "120"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_05": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "OMP_NUM_THREADS": "1",
+      "SERVER_HOST": "task_afed_server",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_05.yaml",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "SERVER_PORT": "8080",
+      "BATCH_SIZE": "8",
+      "CLIENT_ID": "client_05",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_06": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "CLIENT_ID": "client_06",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_06.yaml",
+      "LOCAL_TEST": "1",
+      "BATCH_SIZE": "8",
+      "TASK_ID": "afed",
+      "NUM_CLASSES": "8",
+      "SERVER_HOST": "task_afed_server",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "OMP_NUM_THREADS": "1"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_07": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "CLIENT_ID": "client_07",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_PORT": "8080",
+      "NUM_CLASSES": "8",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_07.yaml",
+      "BATCH_SIZE": "8",
+      "SERVER_HOST": "task_afed_server",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_08": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "FIT_TIMEOUT_SECONDS": "120",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_HOST": "task_afed_server",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "SERVER_PORT": "8080",
+      "CLIENT_ID": "client_08",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "OMP_NUM_THREADS": "1",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_08.yaml"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_09": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "FIT_ATTEMPTS": "2",
+      "NUM_CLASSES": "8",
+      "SERVER_HOST": "task_afed_server",
+      "OMP_NUM_THREADS": "1",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "TASK_ID": "afed",
+      "CLIENT_ID": "client_09",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_09.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_PORT": "8080",
+      "BATCH_SIZE": "8"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_10": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "NUM_CLASSES": "8",
+      "OMP_NUM_THREADS": "1",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_10.yaml",
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "BATCH_SIZE": "8",
+      "CLIENT_ID": "client_10",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_11": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "CLIENT_ID": "client_11",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_11.yaml",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "BATCH_SIZE": "8",
+      "OMP_NUM_THREADS": "1",
+      "FIT_TIMEOUT_SECONDS": "120"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_12": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "LOCAL_TEST": "1",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "CLIENT_ID": "client_12",
+      "BATCH_SIZE": "8",
+      "NUM_CLASSES": "8",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_12.yaml",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "TASK_ID": "afed",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_13": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "CLIENT_ID": "client_13",
+      "SERVER_PORT": "8080",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "SERVER_HOST": "task_afed_server",
+      "TASK_ID": "afed",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_13.yaml",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_14": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_14.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_HOST": "task_afed_server",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_PORT": "8080",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "TASK_ID": "afed",
+      "NUM_CLASSES": "8",
+      "CLIENT_ID": "client_14"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_15": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "CLIENT_ID": "client_15",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_ATTEMPTS": "2",
+      "SERVER_HOST": "task_afed_server",
+      "BATCH_SIZE": "8",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "TASK_ID": "afed",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_15.yaml",
+      "LOCAL_TEST": "1",
+      "NUM_CLASSES": "8"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_16": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "TASK_ID": "afed",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "CLIENT_ID": "client_16",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_16.yaml",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "SERVER_HOST": "task_afed_server",
+      "BATCH_SIZE": "8",
+      "LOCAL_TEST": "1",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_17": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "CLIENT_ID": "client_17",
+      "TASK_ID": "afed",
+      "NUM_CLASSES": "8",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_HOST": "task_afed_server",
+      "LOCAL_TEST": "1",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_17.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2",
+      "FIT_TIMEOUT_SECONDS": "120"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_18": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "CLIENT_ID": "client_18",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_HOST": "task_afed_server",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_18.yaml",
+      "BATCH_SIZE": "8",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_PORT": "8080",
+      "NUM_CLASSES": "8"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_19": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "TASK_ID": "afed",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_19.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "BATCH_SIZE": "8",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "FIT_ATTEMPTS": "2",
+      "CLIENT_ID": "client_19",
+      "SERVER_PORT": "8080",
+      "SERVER_HOST": "task_afed_server"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_20": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "SERVER_PORT": "8080",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_20.yaml",
+      "BATCH_SIZE": "8",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "CLIENT_ID": "client_20",
+      "SERVER_HOST": "task_afed_server",
+      "OMP_NUM_THREADS": "1",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_21": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "NUM_CLASSES": "8",
+      "CLIENT_ID": "client_21",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_21.yaml",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "OMP_NUM_THREADS": "1"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_22": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "NUM_CLASSES": "8",
+      "CLIENT_ID": "client_22",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "OMP_NUM_THREADS": "1",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_22.yaml",
+      "FIT_ATTEMPTS": "2",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "BATCH_SIZE": "8"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_23": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2",
+      "LOCAL_TEST": "1",
+      "OMP_NUM_THREADS": "1",
+      "CLIENT_ID": "client_23",
+      "SERVER_HOST": "task_afed_server",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "NUM_CLASSES": "8",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_23.yaml"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_24": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BATCH_SIZE": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "FIT_ATTEMPTS": "2",
+      "SERVER_PORT": "8080",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "LOCAL_TEST": "1",
+      "NUM_CLASSES": "8",
+      "SERVER_HOST": "task_afed_server",
+      "TASK_ID": "afed",
+      "CLIENT_ID": "client_24",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_24.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_25": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "TASK_ID": "afed",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_HOST": "task_afed_server",
+      "SERVER_PORT": "8080",
+      "LOCAL_TEST": "1",
+      "CLIENT_ID": "client_25",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_25.yaml",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_26": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "CLIENT_ID": "client_26",
+      "SERVER_PORT": "8080",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "BATCH_SIZE": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_HOST": "task_afed_server",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_26.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_ATTEMPTS": "2",
+      "NUM_CLASSES": "8"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_27": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "SERVER_PORT": "8080",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_27.yaml",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "LOCAL_TEST": "1",
+      "NUM_CLASSES": "8",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "BATCH_SIZE": "8",
+      "TASK_ID": "afed",
+      "SERVER_HOST": "task_afed_server",
+      "FIT_ATTEMPTS": "2",
+      "CLIENT_ID": "client_27"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_28": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "OMP_NUM_THREADS": "1",
+      "FIT_ATTEMPTS": "2",
+      "SERVER_PORT": "8080",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "LOCAL_TEST": "1",
+      "TASK_ID": "afed",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "NUM_CLASSES": "8",
+      "CLIENT_ID": "client_28",
+      "SERVER_HOST": "task_afed_server",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_28.yaml",
+      "BATCH_SIZE": "8"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  },
+  "client_29": {
+    "image_id": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "image_name": "sha256:4fba89be7f7a6fec71eb5770906b28e29d3712001a0665a4ee75f6834c1f85aa",
+    "command": [
+      "-u",
+      "client.py"
+    ],
+    "environment": {
+      "CLIENT_ID": "client_29",
+      "DATA_YAML_PATH": "/data/cityscapes/yolo/federated_30_seed2048_20261004_015654/client_configs/client_29.yaml",
+      "TASK_ID": "afed",
+      "BASE_WEIGHTS_PATH": "/data/cityscapes/yolo11n.pt",
+      "SERVER_HOST": "task_afed_server",
+      "LOCAL_CKPT_PATH": "/tmp/yolo_local_client.pt",
+      "FIT_TIMEOUT_SECONDS": "120",
+      "LOCAL_TEST": "1",
+      "NUM_CLASSES": "8",
+      "OMP_NUM_THREADS": "1",
+      "SERVER_PORT": "8080",
+      "BATCH_SIZE": "8",
+      "FIT_ATTEMPTS": "2"
+    },
+    "mounts": [
+      {
+        "source": "/home/gta/marcelo/datasets/cityscapes",
+        "destination": "/data/cityscapes",
+        "read_write": false
+      }
+    ]
+  }
+}
